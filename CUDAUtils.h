@@ -52,6 +52,24 @@ __host__ void divmod_256_by_u64(const uint64_t value[4], uint64_t divisor, uint6
     }
 }
 
+static inline int hexDigitValue(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
+    if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
+    return -1;
+}
+
+static inline bool parseHex64(const char* begin, uint64_t& out) {
+    uint64_t value = 0;
+    for (int i = 0; i < 16; ++i) {
+        int nibble = hexDigitValue(begin[i]);
+        if (nibble < 0) return false;
+        value = (value << 4) | static_cast<uint64_t>(nibble);
+    }
+    out = value;
+    return true;
+}
+
 bool hexToLE64(const std::string& h_in, uint64_t w[4]) {
     std::string h = h_in;
     if (h.size() >= 2 && (h[0] == '0') && (h[1] == 'x' || h[1] == 'X')) h = h.substr(2);
@@ -59,16 +77,19 @@ bool hexToLE64(const std::string& h_in, uint64_t w[4]) {
     if (h.size() < 64) h = std::string(64 - h.size(), '0') + h;
     if (h.size() != 64) return false;
     for (int i = 0; i < 4; ++i) {
-        std::string part = h.substr(i * 16, 16);
-        w[3 - i] = std::stoull(part, nullptr, 16);
+        uint64_t limb = 0;
+        if (!parseHex64(h.c_str() + (i * 16), limb)) return false;
+        w[3 - i] = limb;
     }
     return true;
 }
 bool hexToHash160(const std::string& h, uint8_t hash160[20]) {
     if (h.size() != 40) return false;
     for (int i = 0; i < 20; ++i) {
-        std::string byteStr = h.substr(i * 2, 2);
-        hash160[i] = (uint8_t)std::stoul(byteStr, nullptr, 16);
+        int hi = hexDigitValue(h[i * 2]);
+        int lo = hexDigitValue(h[i * 2 + 1]);
+        if (hi < 0 || lo < 0) return false;
+        hash160[i] = static_cast<uint8_t>((hi << 4) | lo);
     }
     return true;
 }
