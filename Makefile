@@ -1,31 +1,33 @@
-TARGET      := CUDACyclone
-SRC         := CUDACyclone.cu CUDAHash.cu
-OBJ         := $(SRC:.cu=.o)
-CC          := nvcc
+TARGET := CUDACyclone
+SRC := CUDACyclone.cu CUDAHash.cu
+OBJ := $(SRC:.cu=.o)
+CC := nvcc
 
 # Detecta compute capability do GPU local
 GPU_ARCH_RAW := $(shell nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n1)
-GPU_ARCH     := $(shell echo $(GPU_ARCH_RAW) | tr -d '.')
+GPU_ARCH := $(shell echo $(GPU_ARCH_RAW) | tr -d '.')
 
-# Lista de arquiteturas suportadas
-SM_ARCHS   := 75 80 86 89 120 $(GPU_ARCH)
+# Lista de arquiteturas suportadas padrão (para GPUs RTX 30/40/etc.)
+SM_ARCHS_DEFAULT := 75 80 86 89
 
-# Remove duplicadas e inválidas (<50 ou >100)
-FILTERED_ARCHS := $(shell for a in $(SM_ARCHS); do \
-	if [ $$a -ge 50 ] && [ $$a -le 100 ]; then echo $$a; fi; \
-	done | sort -u)
+# Verifica se é RTX 50-series (compute capability 120)
+ifeq ($(GPU_ARCH),120)
+    SM_ARCHS := 120
+else
+    SM_ARCHS := $(SM_ARCHS_DEFAULT) $(GPU_ARCH)
+endif
 
-# Monta gencode correto
-GENCODE    := $(foreach arch,$(FILTERED_ARCHS),-gencode arch=compute_$(arch),code=sm_$(arch))
+# Monta gencode diretamente a partir de SM_ARCHS (sem filtro extra)
+GENCODE := $(foreach arch,$(SM_ARCHS),-gencode arch=compute_$(arch),code=sm_$(arch))
 
 # Flags CUDA/NVCC corrigidas
 NVCC_FLAGS := -O3 -rdc=true -use_fast_math --ptxas-options=-O3 $(GENCODE)
 
 # Evita modo C23 e glibc nova
-CXXFLAGS   := -std=c++17 -Xcompiler "-std=gnu++17"
+CXXFLAGS := -std=c++17 -Xcompiler "-std=gnu++17"
 
 # Linkagem correta
-LDFLAGS    := -lcudadevrt -cudart=static
+LDFLAGS := -lcudadevrt -cudart=static
 
 all: $(TARGET)
 
