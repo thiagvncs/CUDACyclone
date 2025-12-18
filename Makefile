@@ -10,9 +10,9 @@ GPU_ARCH     := $(shell echo $(GPU_ARCH_RAW) | tr -d '.')
 # Lista de arquiteturas suportadas
 SM_ARCHS   := 75 80 86 89 120 $(GPU_ARCH)
 
-# Remove duplicadas e inválidas (<50 ou >120)
+# Remove duplicadas e inválidas (<50 ou >100)
 FILTERED_ARCHS := $(shell for a in $(SM_ARCHS); do \
-	if [ $$a -ge 50 ] && [ $$a -le 120 ]; then echo $$a; fi; \
+	if [ $$a -ge 50 ] && [ $$a -le 100 ]; then echo $$a; fi; \
 	done | sort -u)
 
 # Monta gencode correto
